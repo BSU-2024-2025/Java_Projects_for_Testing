@@ -1,20 +1,16 @@
 package com.example.cvbuilder.command.impl;
 
 import com.example.cvbuilder.command.Command;
-
 import java.math.BigDecimal;
-
+import java.util.Map;
 public class SubtractCommand implements Command {
-    private final BigDecimal a;
-    private final BigDecimal b;
-
-    public SubtractCommand(BigDecimal a, BigDecimal b) {
-        this.a = a;
-        this.b = b;
+    private final Command left;
+    private final Command right;
+    public SubtractCommand(Command left, Command right) {
+        this.left = left;
+        this.right = right;
     }
-
-    @Override
-    public BigDecimal execute() {
-        return a.subtract(b);
+    @Override public BigDecimal execute(Map<String, BigDecimal> variables) {
+        return left.execute(variables).subtract(right.execute(variables));
     }
 }

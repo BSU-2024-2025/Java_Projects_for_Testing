@@ -20,56 +20,81 @@ public class Parser {
     public List<Command> parse(String expression) throws Exception {
         expression = expression.replaceAll("\\s+", ""); // Убираем пробелы из выражения
         List<Command> commands = new ArrayList<>();
-        Deque<Character> operators = new ArrayDeque<>();
-        Deque<BigDecimal> operands = new ArrayDeque<>();
 
-        for (int i = 0; i < expression.length(); i++) {
-            char ch = expression.charAt(i);
+        String[] statements = expression.split(";"); // Разделяем на отдельные выражения
+        for (String statement : statements) {
+            Deque<Character> operators = new ArrayDeque<>();
+            Deque<Command> operands = new ArrayDeque<>();
 
-            if (Character.isDigit(ch) || ch == '.') {
-                StringBuilder sb = new StringBuilder();
-                while (i < expression.length() && (Character.isDigit(expression.charAt(i)) || expression.charAt(i) == '.')) {
-                    sb.append(expression.charAt(i));
+            for (int i = 0; i < statement.length(); i++) {
+                char ch = statement.charAt(i);
+
+                if (Character.isDigit(ch) || ch == '.') {
+                    StringBuilder sb = new StringBuilder();
+                    while (i < statement.length() && (Character.isDigit(statement.charAt(i)) || statement.charAt(i) == '.')) {
+                        sb.append(statement.charAt(i));
+                        i++;
+                    }
+                    i--; // компенсируем цикл while
+                    operands.push(new ValueCommand(new BigDecimal(sb.toString())));
+                } else if (Character.isLetter(ch)) {
+                    StringBuilder sb = new StringBuilder();
+                    while (i < statement.length() && Character.isLetter(statement.charAt(i))) {
+                        sb.append(statement.charAt(i));
+                        i++;
+                    }
+                    i--; // компенсируем цикл while
+                    operands.push(new VariableCommand(sb.toString()));
+                } else if (ch == '(') {
+                    operators.push(ch);
+                } else if (ch == ')') {
+                    while (!operators.isEmpty() && operators.peek() != '(') {
+                        processOperator(operators.pop(), operands);
+                    }
+                    operators.pop(); // удаляем '('
+                } else if (OPERATOR_PRECEDENCE.containsKey(ch)) {
+                    while (!operators.isEmpty() && operators.peek() != '(' && OPERATOR_PRECEDENCE.get(operators.peek()) >= OPERATOR_PRECEDENCE.get(ch)) {
+                        processOperator(operators.pop(), operands);
+                    }
+                    operators.push(ch);
+                } else if (ch == '=') {
+                    String variable = ((VariableCommand) operands.pop()).getVariable();
                     i++;
+                    if (i < statement.length() && statement.charAt(i) == ' ') {
+                        i++; // Пропускаем пробел после знака равенства
+                    }
+                    List<Command> rightCommands = parse(statement.substring(i));
+                    Command right = rightCommands.get(rightCommands.size() - 1);
+                    commands.add(new AssignCommand(variable, right));
+                    break;
+                } else {
+                    throw new Exception("Unsupported operation: " + ch);
                 }
-                i--; // компенсируем цикл while
-                operands.push(new BigDecimal(sb.toString()));
-            } else if (ch == '(') {
-                operators.push(ch);
-            } else if (ch == ')') {
-                while (!operators.isEmpty() && operators.peek() != '(') {
-                    processOperator(operators.pop(), operands, commands);
-                }
-                operators.pop(); // удаляем '('
-            } else if (OPERATOR_PRECEDENCE.containsKey(ch)) {
-                while (!operators.isEmpty() && operators.peek() != '(' && OPERATOR_PRECEDENCE.get(operators.peek()) >= OPERATOR_PRECEDENCE.get(ch)) {
-                    processOperator(operators.pop(), operands, commands);
-                }
-                operators.push(ch);
-            } else {
-                throw new Exception("Unsupported operation: " + ch);
             }
-        }
 
-        while (!operators.isEmpty()) {
-            processOperator(operators.pop(), operands, commands);
+            while (!operators.isEmpty()) {
+                processOperator(operators.pop(), operands);
+            }
+
+            if (!operands.isEmpty()) {
+                commands.add(operands.pop());
+            }
         }
 
         return commands;
     }
 
-    private void processOperator(char operator, Deque<BigDecimal> operands, List<Command> commands) throws Exception {
-        BigDecimal b = operands.pop();
-        BigDecimal a = operands.pop();
+    private void processOperator(char operator, Deque<Command> operands) throws Exception {
+        Command right = operands.pop();
+        Command left = operands.pop();
         Command command;
         switch (operator) {
-            case '+' -> command = new AddCommand(a, b);
-            case '-' -> command = new SubtractCommand(a, b);
-            case '*' -> command = new MultiplyCommand(a, b);
-            case '/' -> command = new DivideCommand(a, b);
+            case '+' -> command = new AddCommand(left, right);
+            case '-' -> command = new SubtractCommand(left, right);
+            case '*' -> command = new MultiplyCommand(left, right);
+            case '/' -> command = new DivideCommand(left, right);
             default -> throw new Exception("Unsupported operation: " + operator);
         }
-        commands.add(command);
-        operands.push(command.execute());
+        operands.push(command);
     }
 }
