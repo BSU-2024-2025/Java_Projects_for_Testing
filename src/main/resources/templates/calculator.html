@@ -1,25 +1,34 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <title>Calculator</title>
+  <title>Expression Calculator</title>
 </head>
 <body>
 <h1>Expression Calculator</h1>
-<form action="/calculate" method="post">
+<form action="/save" method="post">
   <label for="expression">Enter expression:</label>
   <input type="text" id="expression" name="expression" required>
-  <button type="submit">Calculate</button>
+  <button type="submit">Save</button>
 </form>
-<form action="/textinput" method="post">
-  <label for="textinput">Enter text:</label>
-  <input type="text" id="textinput" name="textinput" required>
-  <button type="submit">Go on</button>
-</form>
-<div>
-  <h2>Result:</h2>
-  <p th:if="${result != null}">Result: <span th:text="${result}"></span></p>
-  <p th:if="${error != null}" style="color: red;">Error: <span th:text="${error}"></span></p>
-  <p th:if="${textresult != null}">textResult: <span th:text="${textresult}"></span></p>
-</div>
+
+<p th:if="${error != null}" style="color: red;">Error: <span th:text="${error}"></span></p>
+
+<h2>Saved Expressions:</h2>
+<ul>
+  <li th:each="expression : ${expressions}">
+    <form action="/run" method="post" style="display:inline;">
+      <input type="hidden" name="expression" th:value="${expression}"/>
+      <button type="submit" th:text="${expression}"></button>
+    </form>
+  </li>
+</ul>
+
+<h2>Results:</h2>
+<ul>
+  <li th:each="result : ${results}">
+    <span th:text="${result}"></span>
+  </li>
+</ul>
+
 </body>
 </html>
